@@ -2,6 +2,9 @@
 #define WIDGET_H
 
 #include <QWidget>
+#include <QMediaPlayer>
+#include <QMediaPlaylist>
+#include <QStandardItemModel>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class Widget; }
@@ -14,8 +17,40 @@ class Widget : public QWidget
 public:
     Widget(QWidget *parent = nullptr);
     ~Widget();
+    void load_playlist(QString filename);
+    void save_playlist(QString filename);
+
+private slots:
+    void on_pushButtonOpen_clicked();
+
+    void on_horizontalSliderVolume_valueChanged(int value);
+
+    void on_pushButtonPlay_clicked();
+
+    void on_position_changed(qint64 position);
+    void on_duration_changed(qint64 duration);
+
+    void on_horizontalSliderProgress_sliderMoved(int position);
+
+    void on_pushButtonMute_clicked();
+
+//    void on_pushButtonPrev_clicked();
+//    void on_pushButtonNext_clicked();
+
+    void on_checkBoxLoop_stateChanged(int arg1);
+
+    void on_checkBoxShuffle_stateChanged(int arg1);
 
 private:
     Ui::Widget *ui;
+
+    QMediaPlayer* m_player;
+
+    bool muted;
+    const char* DEFAULT_PLAYLIST = "D:\\Source\\Repos\\Qt\\build-MediaPlayer2-Desktop_Qt_5_12_12_MSVC2015_64bit-Release\\debug\\playlist.m3u";
+
+    QMediaPlaylist* m_playlist;
+    QStandardItemModel* m_playlist_model;
+
 };
 #endif // WIDGET_H
