@@ -6,6 +6,7 @@
 #include <QTime>
 #include <QToolButton>
 #include <QMessageBox>
+#include <QDebug>
 
 Widget::Widget(QWidget *parent)
     : QWidget(parent)
@@ -31,7 +32,7 @@ Widget::Widget(QWidget *parent)
     m_player->setVolume(10);
     ui->labelVolume->setText(QString("Volume: ").append(QString::number(m_player->volume())));
     ui->horizontalSliderVolume->setValue(m_player->volume());
-
+    ui->tableViewPlaylist->setSelectionBehavior(QAbstractItemView::SelectRows);
     connect(m_player, &QMediaPlayer::positionChanged, this, &Widget::on_position_changed);
     connect(m_player, &QMediaPlayer::durationChanged, this, &Widget::on_duration_changed);
 
@@ -87,6 +88,7 @@ Widget::Widget(QWidget *parent)
             if(m_playlist->removeMedia(it->row()))
                 m_playlist_model->removeRows(it->row(), 1);
         }
+
     }
             );
 
@@ -123,6 +125,50 @@ void Widget::save_playlist(QString filename)
 
 }
 
+void Widget::load_cue_playlist(QString filename)
+{
+    QString performer;
+    QString flac_file;
+    QFile file(filename);
+    if(!file.open(QIODevice::ReadOnly | QIODevice::Text))return;
+    while (!file.atEnd())
+    {
+       // QByteArray buffer = file.readLine();
+        QString buffer(file.readLine());
+       //QMessageBox mb(QMessageBox::Icon::Information, "Info", buffer, QMessageBox::Ok, this);
+       //mb.show();
+        //qDebug() << buffer << "\n";
+        if(buffer.split(' ')[0] == "PERFORMER")
+        {
+            performer = buffer.remove(0, strlen("PERFORMER")+1);
+            QMessageBox mb(QMessageBox::Icon::Information, "Info", buffer, QMessageBox::Ok, this);
+            qDebug() << buffer << "\n";
+            qDebug() << performer << "\n";
+
+        }
+        if(buffer.split(' ')[0] == "FILE")
+        {
+            //flac_file = buffer.remove(0, strlen("FILE")+2);
+            flac_file = buffer.remove("FILE \"").remove("\" WAVE\n");
+            QDir dir = QFileInfo(file).absoluteDir();
+            QString path = dir.absolutePath();
+            QString full_name = path+"/"+flac_file;
+            qDebug() <<full_name << "\n";
+            qDebug() << flac_file << "\n";
+
+            QList<QStandardItem*> items;
+            items.append(new QStandardItem(dir.dirName()));
+            items.append(new QStandardItem(full_name));
+            m_playlist_model->appendRow(items);
+            m_playlist->addMedia(QUrl(full_name));
+        }
+
+
+    }
+    file.close();
+
+}
+
 
 void Widget::on_pushButtonOpen_clicked()
 {
@@ -141,16 +187,24 @@ void Widget::on_pushButtonOpen_clicked()
                 this,
                 "Open files",
                 "C:\\Qt\\Muzon",
-                "Audio files (*.mp3 *.flac)"
+                "Audio files (*.mp3 *.flac);;MP-3 (*mp3);; Flac (*.flac);;Playlists (*.m3u *.cue);;M3U (*.m3u);; CUE (*.cue)"
                 );
-    for(QString filesPath: files)
+    if(files.size()>1)
     {
-        QList<QStandardItem*> items;
-        items.append(new QStandardItem(QDir(filesPath).dirName()));
-        items.append(new QStandardItem(filesPath));
-        m_playlist_model->appendRow(items);
-        m_playlist->addMedia(QUrl(filesPath));
+        for(QString filesPath: files)
+        {
+            QList<QStandardItem*> items;
+            items.append(new QStandardItem(QDir(filesPath).dirName()));
+            items.append(new QStandardItem(filesPath));
+            m_playlist_model->appendRow(items);
+            m_playlist->addMedia(QUrl(filesPath));
 
+        }
+    }
+    else
+    {
+        if(files.last().split('.').last() == "m3u")load_playlist(files.last());
+        if(files.last().split('.').last() == "cue")load_cue_playlist(files.last());
     }
 }
 
@@ -178,7 +232,7 @@ void Widget::on_duration_changed(qint64 duration)
 {
     ui->horizontalSliderProgress->setMaximum(duration);
     QTime qt_duration = QTime::fromMSecsSinceStartOfDay(duration);
-    ui->labelDuration->setText(QString("Duration: ").append(qt_duration.toString("mm:ss")));
+    ui->labelDuration->setText(QString("Duration: ").append(qt_duration.toString("hh:mm:ss")));
 
 }
 
